@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyFinance - Controle Familiar</title>
+    <style>
+        :root {
+            --primary: #203764; --secondary: #3a5a94; --bg: #f0f2f5;
+            --receita: #27ae60; --gasto: #e74c3c; --accent: #ffc000;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
+
+        /* TELAS DE LOGIN */
+        .auth-screen { 
+            position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: var(--primary); z-index: 9999; display: flex; align-items: center; justify-content: center;
+        }
+        .auth-box { 
+            background: white; padding: 30px; border-radius: 15px; width: 85%; max-width: 350px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center;
+        }
+        .auth-box h2 { color: var(--primary); margin-bottom: 20px; }
+        .keep-connected { display: flex; align-items: center; gap: 10px; font-size: 14px; margin: 10px 0; color: #666; }
+
+        /* HEADER */
+        .header { background: var(--primary); color: white; padding: 15px; position: sticky; top: 0; z-index: 1000; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+        
+        .nav-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0; scrollbar-width: none; }
+        .tab-btn { 
+            background: rgba(255,255,255,0.1); color: white; border: none; padding: 10px 18px; 
+            border-radius: 5px; font-weight: bold; cursor: pointer; white-space: nowrap;
+        }
+        .tab-btn.active { background: white; color: var(--primary); }
+        .btn-top { background: var(--accent); border: none; padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; flex: 1; }
+
+        /* PAINEL ADMIN */
+        .admin-panel { display: none; background: #fff; padding: 15px; border-radius: 12px; margin: 15px; border: 2px solid var(--accent); }
+        .person-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
+
+        /* FORMULÁRIO */
+        .container { padding: 15px; max-width: 600px; margin: auto; }
+        .card-input { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .btn-launch { background: var(--primary); color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        /* TABELAS */
+        .month-card { background: white; border-radius: 10px; margin-bottom: 20px; overflow: hidden; border: 1px solid #ddd; }
+        .month-title { padding: 10px; text-align: center; font-weight: bold; font-size: 16px; color: #333; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .col-val { text-align: right; font-weight: bold; font-family: monospace; }
+        
+        .btn-status { font-size: 10px; padding: 5px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; width: 100%; }
+        .pago { background: var(--receita) !important; color: white; border: none; }
+        .val-riscado { text-decoration: line-through; color: #aaa; }
+
+        /* CORES MESES */
+        .bg-JAN { background: #d9d9d9; } .bg-FEV { background: #d9e2f3; } .bg-MAR { background: #fce4d6; }
+        .bg-ABR { background: #e2efda; } .bg-MAI { background: #fff2cc; } .bg-JUN { background: #d0cece; }
+        .bg-JUL { background: #daeef3; } .bg-AGO { background: #ffffcc; } .bg-SET { background: #e2f0d9; }
+        .bg-OUT { background: #fbe5d6; } .bg-NOV { background: #deebf7; } .bg-DEZ { background: #fff2cc; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-box" id="login-box">
+            <h2>Bem-vindo</h2>
+            <input type="email" id="email" placeholder="E-mail">
+            <input type="password" id="pass" placeholder="Senha">
+            <div class="keep-connected">
+                <input type="checkbox" id="stay-logged"> Manter sempre conectado
+            </div>
+            <button class="btn-launch" onclick="handleAuth()">ENTRAR / CADASTRAR</button>
+            <p style="font-size: 12px; color: #888; margin-top: 15px;">As informações são salvas localmente no seu navegador.</p>
+        </div>
+    </div>
+
+    <div id="app-content" style="display: none;">
+        <div class="header">
+            <div class="header-top">
+                <button class="btn-top" onclick="togglePanel('panel-fixos')">⚙️ GASTOS FIXOS</button>
+                <button class="btn-top" style="background:white;" onclick="togglePanel('panel-pessoas')">👥 PESSOAS</button>
+                <button class="btn-top" style="background:#e74c3c; color:white; flex:0.4" onclick="logout()">Sair</button>
+            </div>
+            <div class="nav-tabs" id="profile-tabs"></div>
+        </div>
+
+        <div id="panel-pessoas" class="admin-panel">
+            <h4 style="margin:0 0 10px 0;">Gerenciar Pessoas</h4>
+            <input type="text" id="new-person-name" placeholder="Adicionar pessoa">
+            <button class="btn-launch" style="padding:10px; margin-bottom:15px;" onclick="addProfile()">CRIAR PERFIL</button>
+            <div id="profiles-list"></div>
+        </div>
+
+        <div id="panel-fixos" class="admin-panel">
+            <h4 style="margin:0;">Gastos Fixos / Parcelas</h4>
+            <input type="text" id="fix-desc" placeholder="Descrição">
+            <input type="number" id="fix-val" placeholder="Valor R$">
+            <select id="fix-type" onchange="document.getElementById('end-month-div').style.display = this.value === 'parcela' ? 'block' : 'none'">
+                <option value="fixo">Fixo (Todo mês)</option>
+                <option value="parcela">Parcelado</option>
+            </select>
+            <div id="end-month-div" style="display:none;">
+                <label style="font-size:12px;">Acaba em:</label>
+                <select id="fix-end-month"></select>
+            </div>
+            <button class="btn-launch" style="background:var(--accent); color:#000; margin-top:10px;" onclick="addFixed()">SALVAR</button>
+        </div>
+
+        <div class="container">
+            <div class="card-input">
+                <h3 id="current-profile-name" style="margin:0 0 10px 0;">MEUS GASTOS</h3>
+                <select id="select-month"></select>
+                <input type="text" id="input-desc" placeholder="Descrição Variável">
+                <input type="number" id="input-val" placeholder="Valor R$">
+                <button class="btn-launch" onclick="addExpense()">LANÇAR NO MÊS</button>
+            </div>
+            <div id="months-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+        let currentUser = null;
+        let db = { profiles: { "MEUS GASTOS": {} }, fixedExpenses: [], pagamentos: {} };
+        let activeProfile = "MEUS GASTOS";
+
+        // --- SISTEMA DE LOGIN ---
+        window.onload = function() {
+            const savedUser = localStorage.getItem('logged_user');
+            if (savedUser) {
+                currentUser = savedUser;
+                loadUserData();
+                showApp();
+            }
+            document.getElementById('fix-end-month').innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+            document.getElementById('select-month').innerHTML = months.map(m => `<option value="${m}">${m} / 2026</option>`).join('');
+        };
+
+        function handleAuth() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('pass').value;
+            const stay = document.getElementById('stay-logged').checked;
+
+            if (!email || !pass) return alert("Preencha e-mail e senha");
+            
+            currentUser = email;
+            if (stay) localStorage.setItem('logged_user', email);
+            
+            loadUserData();
+            showApp();
+        }
+
+        function showApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            init();
+        }
+
+        function logout() {
+            localStorage.removeItem('logged_user');
+            location.reload();
+        }
+
+        // --- CORE ---
+        function init() {
+            renderTabs();
+            renderMonths();
+            renderProfilesList();
+        }
+
+        function togglePanel(id) {
+            const p = document.getElementById(id);
+            p.style.display = p.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function addProfile() {
+            const name = document.getElementById('new-person-name').value.toUpperCase().trim();
+            if (name && !db.profiles[name]) {
+                db.profiles[name] = {};
+                document.getElementById('new-person-name').value = '';
+                save(); init();
+            }
+        }
+
+        function editProfile(oldName) {
+            const newName = prompt("Novo nome para o perfil:", oldName).toUpperCase().trim();
+            if (newName && newName !== oldName) {
+                db.profiles[newName] = db.profiles[oldName];
+                delete db.profiles[oldName];
+                if (activeProfile === oldName) activeProfile = newName;
+                save(); init();
+            }
+        }
+
+        function deleteProfile(name) {
+            if (confirm(`Excluir perfil ${name}?`)) {
+                delete db.profiles[name];
+                activeProfile = "MEUS GASTOS";
+                save(); init();
+            }
+        }
+
+        function renderProfilesList() {
+            const list = document.getElementById('profiles-list');
+            list.innerHTML = Object.keys(db.profiles).map(name => `
+                <div class="person-item">
+                    <span>${name}</span>
+                    <div>
+                        <button onclick="editProfile('${name}')" style="border:none; background:none; cursor:pointer;">✏️</button>
+                        <button onclick="deleteProfile('${name}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addFixed() {
+            const desc = document.getElementById('fix-desc').value;
+            const val = parseFloat(document.getElementById('fix-val').value);
+            const type = document.getElementById('fix-type').value;
+            const endMonth = type === 'parcela' ? document.getElementById('fix-end-month').value : 'DEZ';
+            if (!desc || isNaN(val)) return;
+            db.fixedExpenses.push({ id: Date.now(), desc, val, type, endMonth });
+            save(); renderMonths();
+            document.getElementById('fix-desc').value = ''; document.getElementById('fix-val').value = '';
+            togglePanel('panel-fixos');
+        }
+
+        function addExpense() {
+            const m = document.getElementById('select-month').value;
+            const d = document.getElementById('input-desc').value;
+            const v = parseFloat(document.getElementById('input-val').value);
+            if (!d || isNaN(v)) return;
+            if (!db.profiles[activeProfile][m]) db.profiles[activeProfile][m] = [];
+            db.profiles[activeProfile][m].push({ id: Date.now(), desc: d, val: v });
+            save(); renderMonths();
+            document.getElementById('input-desc').value = ''; document.getElementById('input-val').value = '';
+        }
+
+        function togglePago(month, itemId) {
+            const key = `${activeProfile}_${month}_${itemId}`;
+            db.pagamentos[key] = !db.pagamentos[key];
+            save(); renderMonths();
+        }
+
+        function renderMonths() {
+            const container = document.getElementById('months-container');
+            container.innerHTML = '';
+            months.forEach((m, idx) => {
+                const variaveis = db.profiles[activeProfile][m] || [];
+                const fixos = (activeProfile === "MEUS GASTOS") ? db.fixedExpenses.filter(f => {
+                    if (f.type === 'fixo') return true;
+                    return idx <= months.indexOf(f.endMonth);
+                }) : [];
+                
+                let saldoMes = 0;
+                let rows = fixos.map(f => {
+                    const isPago = db.pagamentos[`${activeProfile}_${m}_${f.id}`];
+                    if (!isPago) saldoMes -= f.val;
+                    return `<tr><td><small>[F]</small> ${f.desc}</td><td class="col-val">
+                        <span class="${isPago ? 'val-riscado' : ''}">R$ ${f.val.toFixed(2)}</span>
+                        <button class="btn-status ${isPago ? 'pago' : ''}" onclick="togglePago('${m}', ${f.id})">${isPago ? 'OK' : 'PAGAR'}</button>
+                    </td></tr>`;
+                }).join('');
+
+                rows += variaveis.map(v => {
+                    const isPago = db.pagamentos[`${activeProfile}_${m}_${v.id}`];
+                    if (!isPago) saldoMes -= v.val;
+                    return `<tr><td>${v.desc}</td><td class="col-val">
+                        <span class="${isPago ? 'val-riscado' : ''}">R$ ${v.val.toFixed(2)}</span>
+                        <button class="btn-status ${isPago ? 'pago' : ''}" onclick="togglePago('${m}', ${v.id})">${isPago ? 'OK' : 'PAGAR'}</button>
+                    </td></tr>`;
+                }).join('');
+
+                container.innerHTML += `
+                    <div class="month-card">
+                        <div class="month-title bg-${m}">${m} / 2026</div>
+                        <table>${rows || '<tr><td colspan="2" style="text-align:center; color:#999;">Vazio</td></tr>'}
+                        <tr style="background:#fce4d6; font-weight:bold;"><td>A PAGAR</td><td class="col-val" style="color:${saldoMes < 0 ? 'red' : 'green'}">R$ ${Math.abs(saldoMes).toFixed(2)}</td></tr>
+                        </table>
+                    </div>`;
+            });
+        }
+
+        function renderTabs() {
+            document.getElementById('profile-tabs').innerHTML = Object.keys(db.profiles).map(name => `
+                <button class="tab-btn ${name === activeProfile ? 'active' : ''}" onclick="switchProfile('${name}')">${name}</button>
+            `).join('');
+        }
+
+        function switchProfile(name) { activeProfile = name; document.getElementById('current-profile-name').innerText = name; renderTabs(); renderMonths(); }
+        function save() { if(currentUser) localStorage.setItem('data_' + currentUser, JSON.stringify(db)); }
+        function loadUserData() { 
+            const saved = localStorage.getItem('data_' + currentUser); 
+            if(saved) db = JSON.parse(saved); 
+        }
+    </script>
+</body>
+</html>
